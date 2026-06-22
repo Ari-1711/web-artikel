@@ -1,0 +1,81 @@
+/* src/index.css */
+
+/* 1. VARIABEL TEMA DAN WARNA DARI FIGMA (theme.css) */
+:root {
+  --font-size: 16px;
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+
+  /* Editorial warm cream palette */
+  --background: #FAF8F4;
+  --foreground: #1C1917;
+  --card: #FFFFFF;
+  --card-foreground: #1C1917;
+  --primary: #1C1917;
+  --primary-foreground: #FAF8F4;
+  --secondary: #F0EBE1;
+  --border: rgba(28, 25, 23, 0.12);
+  --accent: #B45309;
+  --destructive: #DC2626;
+  --input-background: #F5F0E8;
+}
+
+/* Tema Dark Mode dari Figma */
+.dark {
+  --background: #1A1714;
+  --foreground: #F5F0E8;
+  --card: #241F1B;
+  --card-foreground: #F5F0E8;
+  --primary: #F5F0E8;
+  --primary-foreground: #1A1714;
+  --secondary: #2E2823;
+  --border: rgba(245, 240, 232, 0.1);
+  --accent: #D97706;
+  --destructive: #EF4444;
+}
+
+/* 2. PEMETAAN VARIABEL FIGMA KE KELAS BOOTSTRAP */
+body {
+  background-color: var(--background) !important;
+  color: var(--foreground) !important;
+  font-family: var(--font-body) !important;
+}
+
+h1, h2, h3, .card-title {
+  font-family: var(--font-display) !important;
+}
+
+.card {
+  background-color: var(--card) !important;
+  color: var(--card-foreground) !important;
+  border-color: var(--border) !important;
+}
+
+.bg-light {
+  background-color: var(--secondary) !important;
+}
+
+.border, .border-b, .border-top {
+  border-color: var(--border) !important;
+}
+
+.text-primary {
+  color: var(--accent) !important;
+}
+
+.btn-primary {
+  background-color: var(--primary) !important;
+  border-color: var(--primary) !important;
+  color: var(--primary-foreground) !important;
+}
+
+.btn-primary:hover {
+  background-color: var(--accent) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent-foreground) !important;
+}
+
+.text-muted, .text-secondary {
+  color: var(--foreground) !important;
+  opacity: 0.7;
+}

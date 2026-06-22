@@ -1,0 +1,11 @@
+# Frontend
+web-artikel-frontend/node_modules/
+web-artikel-frontend/dist/
+web-artikel-frontend/.env
+web-artikel-frontend/.env.local
+
+# Backend
+Web-Artikel-backend/target/
+Web-Artikel-backend/.idea/
+Web-Artikel-backend/*.iml
+.DS_Store
