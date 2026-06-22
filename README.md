@@ -95,6 +95,3 @@ Buka jendela terminal baru di VS Code (pisahkan dari terminal backend yang sedan
 * **Peran Admin:** Gunakan username `admin` (Dapat mengakses penuh Dashboard Admin untuk menulis, mengubah, dan menghapus artikel).
 * **Peran Pengguna Biasa:** Anda bisa menggunakan fitur **Daftar Sekarang** langsung pada halaman login untuk membuat akun pembaca baru.
 
-```
-
-```
