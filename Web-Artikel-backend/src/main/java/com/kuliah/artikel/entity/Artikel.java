@@ -22,47 +22,36 @@ public class Artikel {
 
     private String namaPenulisKustom;
 
-    @Column(columnDefinition = "TEXT")
-    private String urlGambar;
-
     private LocalDateTime tanggalDibuat = LocalDateTime.now();
 
-    // 1. Ubah FetchType menjadi EAGER atau abaikan proxy hibernate saat konversi ke JSON
     @ManyToOne(fetch = FetchType.EAGER) 
     @JoinColumn(name = "pengguna_id")
-    @JsonIgnoreProperties({"password", "peran", "handler", "hibernateLazyInitializer"}) // Amankan password & putus sirkular reference
+    @JsonIgnoreProperties({"password", "peran", "handler", "hibernateLazyInitializer"})
     private Pengguna penulisAkun;
 
-    // 2. Cegah sirkular reference dari data akun-akun yang melakukan likes
     @ManyToMany
     @JoinTable(
         name = "artikel_likes",
         joinColumns = @JoinColumn(name = "artikel_id"),
         inverseJoinColumns = @JoinColumn(name = "pengguna_id")
     )
-    // ... batas kode atas (properti likes) ...
     @JsonIgnoreProperties({"password", "peran", "handler", "hibernateLazyInitializer"})
     private Set<Pengguna> likes = new HashSet<>();
 
-    // FIX: Tambahkan relasi berantai agar saat artikel dihapus, komentarnya ikut musnah
     @OneToMany(mappedBy = "artikel", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonIgnoreProperties({"artikel", "handler", "hibernateLazyInitializer"}) // Putus loop JSON
-    private java.util.List<Komentar> daftarKomentar;
-
-    // Tambahan helper method agar memudahkan pemanggilan getJumlahSuka() di controller
-    @Transient
-    public int getJumlahSuka() {
-        return this.likes != null ? this.likes.size() : 0;
-    }
+    @JsonIgnoreProperties({"artikel", "handler", "hibernateLazyInitializer"})
+    private List<Komentar> daftarKomentar;
 
     @OneToMany(mappedBy = "artikel", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnoreProperties({"artikel"})
     private List<LaporanArtikel> daftarLaporan;
 
+    @Transient
+    public int getJumlahSuka() {
+        return this.likes != null ? this.likes.size() : 0;
+    }
 
-    
-
-    // Getter & Setter
+    // Getter & Setter (Hanya yang esensial)
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public String getJudul() { return judul; }
@@ -71,8 +60,6 @@ public class Artikel {
     public void setIsi(String isi) { this.isi = isi; }
     public String getNamaPenulisKustom() { return namaPenulisKustom; }
     public void setNamaPenulisKustom(String namaPenulisKustom) { this.namaPenulisKustom = namaPenulisKustom; }
-    public String getUrlGambar() { return urlGambar; }
-    public void setUrlGambar(String urlGambar) { this.urlGambar = urlGambar; }
     public LocalDateTime getTanggalDibuat() { return tanggalDibuat; }
     public void setTanggalDibuat(LocalDateTime tanggalDibuat) { this.tanggalDibuat = tanggalDibuat; }
     public Pengguna getPenulisAkun() { return penulisAkun; }

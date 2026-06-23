@@ -1,7 +1,6 @@
 package com.kuliah.artikel.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -19,7 +18,6 @@ public class Komentar {
 
     private LocalDateTime tanggalDibuat = LocalDateTime.now();
 
-    // FIX: Samakan gaya pemutusan loop dengan Artikel.java agar data komentar mau muncul di React
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "artikel_id", nullable = false)
     @JsonIgnoreProperties({"daftarKomentar", "likes", "handler", "hibernateLazyInitializer"}) 
@@ -30,31 +28,26 @@ public class Komentar {
     @JsonIgnoreProperties({"password", "peran", "handler", "hibernateLazyInitializer"}) 
     private Pengguna penulis;
 
-    @OneToMany(mappedBy = "komentarInduk", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    @JsonManagedReference 
+    @OneToMany(mappedBy = "komentarInduk", cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
+    // Refaktor Malas: Singkirkan @JsonManagedReference, gunakan @JsonIgnoreProperties agar klop dengan BalasanKomentar.java
+    @JsonIgnoreProperties({"komentarInduk", "handler", "hibernateLazyInitializer"}) 
     private List<BalasanKomentar> daftarBalasan = new ArrayList<>();
 
-    // Tambahkan ini di dalam file Komentar.java untuk mengamankan proses hapus komentar
     @OneToMany(mappedBy = "komentar", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnoreProperties({"komentar"})
-    private java.util.List<LaporanKomentar> daftarLaporanKomentar;
+    private List<LaporanKomentar> daftarLaporanKomentar;
 
     // Getter & Setter Manual
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
-
     public String getIsi() { return isi; }
     public void setIsi(String isi) { this.isi = isi; }
-
     public LocalDateTime getTanggalDibuat() { return tanggalDibuat; }
     public void setTanggalDibuat(LocalDateTime tanggalDibuat) { this.tanggalDibuat = tanggalDibuat; }
-
     public Artikel getArtikel() { return artikel; }
     public void setArtikel(Artikel artikel) { this.artikel = artikel; }
-
     public Pengguna getPenulis() { return penulis; }
     public void setPenulis(Pengguna penulis) { this.penulis = penulis; }
-
     public List<BalasanKomentar> getDaftarBalasan() { return daftarBalasan; }
     public void setDaftarBalasan(List<BalasanKomentar> daftarBalasan) { this.daftarBalasan = daftarBalasan; }
 }

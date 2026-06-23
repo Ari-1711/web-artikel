@@ -4,8 +4,6 @@ import {
   ChevronLeft,
   AlertTriangle,
   Trash2,
-  Clock,
-  BarChart2,
   FileText,
   MessageSquare,
   Filter,
@@ -13,7 +11,6 @@ import {
   CheckCircle,
 } from "lucide-react";
 
-// ================= TYPE DEFINITIONS SINKRON DENGAN REST API =================
 interface LaporanArtikel {
   id: number;
   alasan: string;
@@ -21,27 +18,28 @@ interface LaporanArtikel {
   artikel: {
     id: number;
     judul: string;
-  };
+  } | null;
   pelapor: {
     username: string;
-  };
+  } | null;
 }
 
-interface LaporanKomentar {
+// FIX 1: Sesuaikan interface dengan properti flat hasil query Map dari backend Java
+interface LaporanKomentarFlat {
   id: number;
   alasan: string;
   tanggalDilaporkan: string;
-  komentar: {
-    id: number;
-    isi: string;
-  };
-  pelapor: {
-    username: string;
-  };
+  pelaporUsername: string | null;
+  komentarId: number | null;
+  komentarIsi: string | null;
+  balasanId: number | null;
+  balasanIsi: string | null;
+  artikelId: number | null;
 }
 
 interface AdminDashboardProps {
   setView: (v: string) => void;
+  setSelectedArticleId: (id: number | null) => void;
 }
 
 type TimeFilter = "hari" | "minggu" | "bulan" | "all";
@@ -63,31 +61,26 @@ function StatCard({ icon, label, value, sub, accent = false }: {
   return (
     <div className="card p-3 shadow-sm border" style={{ borderRadius: "12px" }}>
       <div className="d-flex items-start justify-between mb-2">
-        <div 
-          className={`rounded d-flex align-items-center justify-content-center ${accent ? "bg-danger bg-opacity-10 text-danger" : "bg-light text-muted"}`} 
-          style={{ width: "36px", height: "36px" }}
-        >
+        <div className={`rounded d-flex align-items-center justify-content-center ${accent ? "bg-danger bg-opacity-10 text-danger" : "bg-light text-muted"}`} style={{ width: "36px", height: "36px" }}>
           {icon}
         </div>
       </div>
-      <h3 className={`fw-bold mb-1 ${accent ? "text-danger" : "text-dark"}`} style={{ fontSize: "1.75rem" }}>
-        {value}
-      </h3>
+      <h3 className={`fw-bold mb-1 ${accent ? "text-danger" : "text-dark"}`} style={{ fontSize: "1.75rem" }}>{value}</h3>
       <p className="mb-0 fw-semibold text-secondary small">{label}</p>
       {sub && <p className="mb-0 text-muted mt-1" style={{ fontSize: "0.75rem" }}>{sub}</p>}
     </div>
   );
 }
 
-export function AdminDashboard({ setView }: AdminDashboardProps) {
+export function AdminDashboard({ setView, setSelectedArticleId }: AdminDashboardProps) {
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("all");
   const [laporanArtikel, setLaporanArtikel] = useState<LaporanArtikel[]>([]);
-  const [laporanKomentar, setLaporanKomentar] = useState<LaporanKomentar[]>([]);
+  // Gunakan tipe interface flat yang baru
+  const [laporanKomentar, setLaporanKomentar] = useState<LaporanKomentarFlat[]>([]);
   const [deletedCount, setDeletedCount] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
-  const [confirmDelete, setConfirmDelete] = useState<{ type: "article" | "comment"; id: number } | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ type: "article" | "comment" | "reply"; id: number } | null>(null);
 
-  // 1. Ambil Data Dashboard Mengikuti State Filter Waktu dari Java Backend
   useEffect(() => {
     setLoading(true);
     api.get(`/admin/dashboard?filterWaktu=${timeFilter}`)
@@ -102,31 +95,36 @@ export function AdminDashboard({ setView }: AdminDashboardProps) {
       });
   }, [timeFilter]);
 
-  // 2. Aksi Hapus Artikel Nyata Menembak Rest API Java
   const handleDeleteArticle = (id: number) => {
     api.delete(`/admin/artikel/hapus/${id}`)
       .then(() => {
-        setLaporanArtikel((prev) => prev.filter((item) => item.artikel.id !== id));
+        setLaporanArtikel((prev) => prev.filter((item) => item.artikel?.id !== id));
         setDeletedCount((c) => c + 1);
         setConfirmDelete(null);
       })
       .catch(() => alert("Gagal menghapus artikel"));
   };
 
-  // 3. Aksi Hapus Komentar Nyata - Menembak REST API Java yang Valid
   const handleDeleteComment = (id: number) => {
-    // FIX: Arahkan ke endpoint yang benar-benar ada di backend
-    // Jika kamu menambahkan Mapping baru di AdminController Java, pastikan URL-nya sinkron:
     api.delete(`/admin/komentar/hapus/${id}`) 
       .then(() => {
-        setLaporanKomentar((prev) => prev.filter((item) => item.komentar.id !== id));
+        // FIX 2: Filter berdasarkan komentarId pada struktur flat
+        setLaporanKomentar((prev) => prev.filter((item) => item.komentarId !== id));
         setDeletedCount((c) => c + 1);
         setConfirmDelete(null);
       })
-      .catch((err) => {
-        console.error("Gagal menghapus komentar:", err);
-        alert("Gagal menghapus komentar. Pastikan endpoint Java sudah terpasang.");
-      });
+      .catch(() => alert("Gagal menghapus komentar"));
+  };
+
+  const handleDeleteReply = (id: number) => {
+    api.delete(`/admin/balasan/hapus/${id}`)
+      .then(() => {
+        // FIX 3: Filter berdasarkan balasanId pada struktur flat
+        setLaporanKomentar((prev) => prev.filter((item) => item.balasanId !== id));
+        setDeletedCount((c) => c + 1);
+        setConfirmDelete(null);
+      })
+      .catch(() => alert("Gagal menghapus balasan komentar"));
   };
 
   const totalReports = laporanArtikel.length + laporanKomentar.length;
@@ -138,10 +136,7 @@ export function AdminDashboard({ setView }: AdminDashboardProps) {
       {/* Header */}
       <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4">
         <div>
-          <button
-            onClick={() => setView("home")}
-            className="btn btn-link p-0 text-decoration-none text-muted d-flex align-items-center gap-1 mb-2 small shadow-none"
-          >
+          <button onClick={() => setView("home")} className="btn btn-link p-0 text-decoration-none text-muted d-flex align-items-center gap-1 mb-2 small shadow-none">
             <ChevronLeft size={15} /> Kembali ke Beranda
           </button>
           <h1 className="fw-bold text-dark h3 mb-0">Dashboard & Laporan</h1>
@@ -152,40 +147,26 @@ export function AdminDashboard({ setView }: AdminDashboardProps) {
         <div className="d-flex align-items-center gap-1 p-1 bg-white border rounded shadow-sm" style={{ width: "fit-content" }}>
           <Filter size={13} className="text-muted ms-2 me-1" />
           {(Object.keys(TIME_FILTER_LABELS) as TimeFilter[]).map((f) => (
-            <button
-              key={f}
-              onClick={() => setTimeFilter(f)}
-              className={`btn btn-sm px-3 rounded ${timeFilter === f ? "btn-dark fw-bold" : "btn-light border-0 text-muted"}`}
-              style={{ fontSize: "0.8rem" }}
-            >
+            <button key={f} onClick={() => setTimeFilter(f)} className={`btn btn-sm px-3 rounded ${timeFilter === f ? "btn-dark fw-bold" : "btn-light border-0 text-muted"}`} style={{ fontSize: "0.8rem" }}>
               {TIME_FILTER_LABELS[f]}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Admin Access Notice */}
       <div className="alert alert-danger d-flex align-items-center gap-2 py-2 px-3 mb-4 border-start border-3 border-danger border-top-0 border-end-0 border-bottom-0" role="alert" style={{ borderRadius: "8px" }}>
         <ShieldAlert size={15} className="text-danger flex-shrink-0" />
         <span className="small text-dark">
-          Akses terbatas — halaman ini hanya dapat diakses via <code className="bg-light px-1 py-0.5 rounded small">/admin/dashboard</code> oleh pengguna dengan peran <strong>ADMIN</strong>.
+          Akses terbatas — hanya peran <strong>ADMIN</strong> yang diizinkan mengelola dashboard.
         </span>
       </div>
 
-      {/* Grid Status Cards Bootstrap */}
+      {/* Grid Stat Cards */}
       <div className="row row-cols-2 row-cols-lg-4 g-3 mb-4">
-        <div className="col">
-          <StatCard icon={<AlertTriangle size={16} />} label="Total Laporan Aktif" value={totalReports} sub="Menunggu tindakan" accent />
-        </div>
-        <div className="col">
-          <StatCard icon={<FileText size={16} />} label="Artikel Dilaporkan" value={laporanArtikel.length} sub="Perlu ditinjau" />
-        </div>
-        <div className="col">
-          <StatCard icon={<MessageSquare size={16} />} label="Komentar Dilaporkan" value={laporanKomentar.length} sub="Perlu ditinjau" />
-        </div>
-        <div className="col">
-          <StatCard icon={<CheckCircle size={16} />} label="Konten Dihapus" value={deletedCount} sub="Sesi ini" />
-        </div>
+        <div className="col"><StatCard icon={<AlertTriangle size={16} />} label="Total Laporan" value={totalReports} accent /></div>
+        <div className="col"><StatCard icon={<FileText size={16} />} label="Artikel Bermasalah" value={laporanArtikel.length} /></div>
+        <div className="col"><StatCard icon={<MessageSquare size={16} />} label="Komentar Bermasalah" value={laporanKomentar.length} /></div>
+        <div className="col"><StatCard icon={<CheckCircle size={16} />} label="Konten Dihapus" value={deletedCount} /></div>
       </div>
 
       <div className="row g-4">
@@ -196,38 +177,42 @@ export function AdminDashboard({ setView }: AdminDashboardProps) {
               <FileText size={16} className="text-primary" />
               <span>Artikel Dilaporkan</span>
             </div>
-            <span className="badge bg-light text-dark border px-2 py-1">{laporanArtikel.length} item</span>
           </div>
-
           <div className="card shadow-sm border overflow-hidden" style={{ borderRadius: "12px" }}>
             <div className="table-responsive">
               <table className="table table-hover align-middle mb-0 small">
-                <thead className="table-light text-uppercase" style={{ fontSize: "0.7rem", letterSpacing: "0.05em" }}>
+                <thead className="table-light" style={{ fontSize: "0.75rem" }}>
                   <tr>
-                    <th>Judul Artikel / Alasan</th>
+                    <th>Artikel / Alasan</th>
                     <th>Pelapor</th>
                     <th className="text-end">Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
                   {laporanArtikel.length === 0 ? (
-                    <tr>
-                      <td colSpan={3} className="text-center py-4 text-muted"><CheckCircle size={20} className="mb-1 d-block mx-auto"/> Bebas laporan</td>
-                    </tr>
+                    <tr><td colSpan={3} className="text-center py-4 text-muted">Bebas laporan artikel</td></tr>
                   ) : (
                     laporanArtikel.map((lap) => (
                       <tr key={lap.id}>
                         <td>
-                          <p className="mb-0 fw-bold text-dark text-truncate" style={{ maxWidth: "200px" }}>{lap.artikel?.judul || "Artikel Terhapus"}</p>
+                          <p 
+                            onClick={() => {
+                              if (lap.artikel) {
+                                setSelectedArticleId(lap.artikel.id);
+                                setView("detail");
+                              }
+                            }} 
+                            className="mb-0 fw-bold text-primary text-truncate" 
+                            style={{ maxWidth: "180px", cursor: "pointer", textDecoration: "underline" }}
+                            title="Klik untuk periksa artikel"
+                          >
+                            {lap.artikel?.judul || "⚠️ Artikel Terhapus"}
+                          </p>
                           <small className="text-danger">Alasan: {lap.alasan}</small>
                         </td>
-                        <td className="text-muted">@{lap.pelapor?.username}</td>
+                        <td className="text-muted">@{lap.pelapor?.username || "anonim"}</td>
                         <td className="text-end">
-                          <button 
-                            disabled={!lap.artikel}
-                            onClick={() => lap.artikel && setConfirmDelete({ type: "article", id: lap.artikel.id })}
-                            className="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1 py-1"
-                          >
+                          <button disabled={!lap.artikel} onClick={() => lap.artikel && setConfirmDelete({ type: "article", id: lap.artikel.id })} className="btn btn-sm btn-outline-danger py-1">
                             <Trash2 size={11} /> Hapus
                           </button>
                         </td>
@@ -247,74 +232,89 @@ export function AdminDashboard({ setView }: AdminDashboardProps) {
               <MessageSquare size={16} className="text-primary" />
               <span>Komentar Dilaporkan</span>
             </div>
-            <span className="badge bg-light text-dark border px-2 py-1">{laporanKomentar.length} item</span>
           </div>
-
           <div className="card shadow-sm border overflow-hidden" style={{ borderRadius: "12px" }}>
             <div className="table-responsive">
               <table className="table table-hover align-middle mb-0 small">
-                <thead className="table-light text-uppercase" style={{ fontSize: "0.7rem", letterSpacing: "0.05em" }}>
+                <thead className="table-light" style={{ fontSize: "0.75rem" }}>
                   <tr>
-                    <th>Isi Komentar / Alasan</th>
+                    <th>Komentar / Alasan</th>
                     <th>Pelapor</th>
                     <th className="text-end">Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {laporanKomentar.length === 0 ? (
-                    <tr>
-                      <td colSpan={3} className="text-center py-4 text-muted"><CheckCircle size={20} className="mb-1 d-block mx-auto"/> Bebas laporan</td>
-                    </tr>
-                  ) : (
-                    laporanKomentar.map((lap) => (
-                      <tr key={lap.id}>
-                        <td>
-                          <p className="mb-0 text-dark text-truncate fst-italic" style={{ maxWidth: "200px" }}>"{lap.komentar?.isi || "Komentar Terhapus"}"</p>
-                          <small className="text-danger">Alasan: {lap.alasan}</small>
-                        </td>
-                        <td className="text-muted">@{lap.pelapor?.username}</td>
-                        <td className="text-end">
-                          <button 
-                            disabled={!lap.komentar}
-                            onClick={() => lap.komentar && setConfirmDelete({ type: "comment", id: lap.komentar.id })}
-                            className="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1 py-1"
-                          >
-                            <Trash2 size={11} /> Hapus
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
+  {laporanKomentar.length === 0 ? (
+    <tr><td colSpan={3} className="text-center py-4 text-muted">Bebas laporan komentar</td></tr>
+  ) : (
+    laporanKomentar.map((lap) => (
+      <tr key={lap.id}>
+        <td>
+          {/* FIX 4: Mengubah teks konten menjadi tautan aktif menuju artikel detail */}
+          {lap.komentarIsi ? (
+            <p 
+              onClick={() => {
+                if (lap.artikelId) {
+                  setSelectedArticleId(lap.artikelId);
+                  setView("detail");
+                }
+              }}
+              className="mb-0 text-primary fw-bold text-truncate fst-italic" 
+              style={{ maxWidth: "180px", cursor: "pointer", textDecoration: "underline" }}
+              title="Klik untuk periksa artikel asal komentar ini"
+            >
+              "{lap.komentarIsi}"
+            </p>
+          ) : lap.balasanIsi ? (
+            <div>
+              <p 
+                onClick={() => {
+                  if (lap.artikelId) {
+                    setSelectedArticleId(lap.artikelId);
+                    setView("detail");
+                  }
+                }}
+                className="mb-0 text-primary fw-bold text-truncate fst-italic" 
+                style={{ maxWidth: "180px", cursor: "pointer", textDecoration: "underline" }}
+                title="Klik untuk periksa artikel asal balasan ini"
+              >
+                "{lap.balasanIsi}"
+              </p>
+              <span className="badge bg-secondary px-2 py-1 mt-1" style={{ fontSize: "0.6rem" }}>Balasan Konten</span>
+            </div>
+          ) : (
+            <p className="mb-0 text-muted small">⚠️ Konten Terhapus</p>
+          )}
+          <small className="text-danger d-block mt-1">Alasan: {lap.alasan}</small>
+        </td>
+        <td className="text-muted">@{lap.pelaporUsername || "anonim"}</td>
+        <td className="text-end">
+          {/* FIX 5: Evaluasi tombol hapus menggunakan ID properti flat */}
+          <button 
+            disabled={!lap.komentarId && !lap.balasanId} 
+            onClick={() => {
+              if (lap.komentarId) {
+                setConfirmDelete({ type: "comment", id: lap.komentarId });
+              } else if (lap.balasanId) {
+                setConfirmDelete({ type: "reply", id: lap.balasanId });
+              }
+            }} 
+            className="btn btn-sm btn-outline-danger py-1"
+          >
+            <Trash2 size={11} /> Hapus
+          </button>
+        </td>
+      </tr>
+    ))
+  )}
+</tbody>
               </table>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Quick Access Menu Section */}
-      <div className="row g-3 mt-4">
-        <div className="col-md-4">
-          <button className="card p-3 w-100 text-start bg-white border btn hover-light d-flex flex-row align-items-center gap-3 shadow-sm" style={{ borderRadius: "12px" }}>
-            <div className="bg-light text-primary rounded p-2"><BarChart2 size={16} /></div>
-            <div><p className="mb-0 small fw-bold text-dark">Statistik Lengkap</p><small className="text-muted">Lihat laporan terperinci</small></div>
-          </button>
-        </div>
-        <div className="col-md-4">
-          <button onClick={() => setView("admin-form-new")} className="card p-3 w-100 text-start bg-white border btn hover-light d-flex flex-row align-items-center gap-3 shadow-sm" style={{ borderRadius: "12px" }}>
-            <div className="bg-light text-primary rounded p-2"><FileText size={16} /></div>
-            <div><p className="mb-0 small fw-bold text-dark">Tulis Artikel Baru</p><small className="text-muted">Tambahkan konten baru</small></div>
-          </button>
-        </div>
-        <div className="col-md-4">
-          <button className="card p-3 w-100 text-start bg-white border btn hover-light d-flex flex-row align-items-center gap-3 shadow-sm" style={{ borderRadius: "12px" }}>
-            <div className="bg-light text-primary rounded p-2"><ShieldAlert size={16} /></div>
-            <div><p className="mb-0 small fw-bold text-dark">Aturan Moderasi</p><small className="text-muted">Kelola kebijakan konten</small></div>
-          </button>
-        </div>
-      </div>
-
-      {/* Modal Konfirmasi Penghapusan Konten */}
+      {/* Modal Konfirmasi */}
       {confirmDelete && (
         <div className="modal d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }}>
           <div className="modal-dialog modal-sm modal-dialog-centered">
@@ -322,11 +322,20 @@ export function AdminDashboard({ setView }: AdminDashboardProps) {
               <div className="bg-danger bg-opacity-10 text-danger rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3" style={{ width: "48px", height: "48px" }}>
                 <Trash2 size={20} />
               </div>
-              <h5 className="fw-bold text-dark">Konfirmasi</h5>
-              <p className="text-muted small mb-4">Konten ini akan dihapus secara permanen dari basis data dan tidak dapat dipulihkan.</p>
+              <h5 className="fw-bold text-dark">Konfirmasi Hapus</h5>
+              <p className="text-muted small mb-4">Konten ini akan dimusnahkan secara permanen dari database MySQL.</p>
               <div className="d-flex gap-2">
                 <button onClick={() => setConfirmDelete(null)} className="btn btn-sm btn-light border w-100">Batal</button>
-                <button onClick={() => confirmDelete.type === "article" ? handleDeleteArticle(confirmDelete.id) : handleDeleteComment(confirmDelete.id)} className="btn btn-sm btn-danger w-100">Ya, Hapus</button>
+                <button 
+                  onClick={() => {
+                    if (confirmDelete.type === "article") handleDeleteArticle(confirmDelete.id);
+                    else if (confirmDelete.type === "comment") handleDeleteComment(confirmDelete.id);
+                    else if (confirmDelete.type === "reply") handleDeleteReply(confirmDelete.id);
+                  }} 
+                  className="btn btn-sm btn-danger w-100"
+                >
+                  Ya, Hapus
+                </button>
               </div>
             </div>
           </div>

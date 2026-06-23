@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.Arrays;
+import java.util.List;
 
 @Component
 public class DataInitializer implements CommandLineRunner {
@@ -27,30 +27,26 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        // 1. Cek dan buat Peran/Role otomatis jika belum ada di DB
-        if (peranRepository.findByNama("ROLE_USER").isEmpty()) {
-            Peran userRole = new Peran();
-            userRole.setNama("ROLE_USER");
-            peranRepository.save(userRole);
-        }
-
-        if (peranRepository.findByNama("ROLE_ADMIN").isEmpty()) {
-            Peran adminRole = new Peran();
-            adminRole.setNama("ROLE_ADMIN");
-            peranRepository.save(adminRole);
-        }
+        // 1. Inisialisasi Peran secara otomatis menggunakan Looping (Lebih bersih & scalable)
+        List.of("ROLE_USER", "ROLE_ADMIN").forEach(namaRole -> {
+            if (peranRepository.findByNama(namaRole).isEmpty()) {
+                Peran peran = new Peran();
+                peran.setNama(namaRole);
+                peranRepository.save(peran);
+            }
+        });
 
         // 2. Buat akun MASTER ADMIN otomatis untuk login pertama kali
         if (penggunaRepository.findByUsername("admin").isEmpty()) {
             Pengguna admin = new Pengguna();
             admin.setUsername("admin");
-            admin.setPassword(passwordEncoder.encode("admin123")); // Password login: admin123
+            admin.setPassword(passwordEncoder.encode("admin123")); // Password kustom sesuai akun demo awal
 
-            Peran adminRole = peranRepository.findByNama("ROLE_ADMIN").get();
-            admin.setPeran(new HashSet<>(Collections.singletonList(adminRole)));
-            
-            penggunaRepository.save(admin);
-            System.out.println("====== AKUN ADMIN OTOMATIS LAYANAN DIAKTIFKAN (User: admin, Pass: admin123) ======");
+            peranRepository.findByNama("ROLE_ADMIN").ifPresent(adminRole -> {
+                admin.setPeran(new HashSet<>(Collections.singletonList(adminRole)));
+                penggunaRepository.save(admin);
+                System.out.println("====== AKUN ADMIN OTOMATIS LAYANAN DIAKTIFKAN (User: admin, Pass: admin123) ======");
+            });
         }
     }
 }

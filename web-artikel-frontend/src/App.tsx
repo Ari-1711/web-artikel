@@ -83,7 +83,8 @@ export default function App() {
 
 {view === "admin-dashboard" && (
   <ProtectedRoute role={role} allowedRoles={["admin"]} fallbackView="login" setView={setView}>
-    <AdminDashboard setView={setView} />
+    {/* CUKUP UBAH BARIS INI: Tambahkan setSelectedArticleId */}
+    <AdminDashboard setView={setView} setSelectedArticleId={setSelectedArticleId} />
   </ProtectedRoute>
 )}
 
@@ -98,6 +99,8 @@ export default function App() {
     <AdminForm isEdit={true} articleId={selectedArticleId} setView={setView} />
   </ProtectedRoute>
 )}
+
+
     </div>
   );
 }

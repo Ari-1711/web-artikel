@@ -120,17 +120,23 @@ function CommentCard({
   comment,
   onReply,
   onReport,
+  onReportReply, // 👈 FIX 1: Terima properti report balasan dari parent
   role,
 }: {
   comment: Komentar;
   onReply: (commentId: number, text: string) => void;
   onReport: (commentId: number, reason: string) => void;
+  onReportReply: (replyId: number, reason: string) => void; // 👈 Definisikan tipe datanya
   role: "guest" | "user" | "admin";
 }) {
   const [replyOpen, setReplyOpen] = useState(false);
   const [replyText, setReplyText] = useState("");
   const [showReportModal, setShowReportModal] = useState(false);
   const [reported, setReported] = useState(false);
+
+  // State pembantu melacak modal dan status klik report khusus baris balasan
+  const [activeReplyReport, setActiveReplyReport] = useState<BalasanKomentar | null>(null);
+  const [reportedReplies, setReportedReplies] = useState<Record<number, boolean>>({});
 
   const authorName = comment.penulis?.username || "Anonim";
 
@@ -143,7 +149,7 @@ function CommentCard({
           </div>
           <div>
             <p className="mb-0 fw-bold text-dark small">{authorName}</p>
-            <p className="mb-0 text-muted d-flex align-items-center gap-1" style={{ fontSize: "0.7rem" }}>
+            <p className="mb-0 text-muted d-flex align-items-center gap-1" style={{ fontSize: "0.75rem" }}>
               <Clock size={10} /> {formatDate(comment.tanggalDibuat)}
             </p>
           </div>
@@ -178,6 +184,7 @@ function CommentCard({
             onChange={(e) => setReplyText(e.target.value)}
             placeholder="Tulis balasan..."
             className="form-control shadow-none"
+            style={{ fontSize: "0.85rem" }}
           />
           <button
             onClick={() => {
@@ -194,32 +201,33 @@ function CommentCard({
         </div>
       )}
 
-      {/* Render Nested Balasan Otomatis dengan proteksi fallback array */}
-      {(comment.daftarBalasan || []).length > 0 && (
-        <div className="mt-3 ps-3 border-start border-2 space-y-2">
-        {(comment.daftarBalasan || []).map((reply) => {
-              const replyAuthor = reply.penulis?.username || "Anonim";
-      return (
-        <div key={reply.id} className="pt-2">
-          {/* Konten Balasan */}
-        </div>
-          );
-          })}
-        </div>
-          )}
-
-      {/* Render Nested Balasan Otomatis dari Struktur JSON Baru */}
+      {/* Render Nested Balasan Otomatis dari Struktur JSON */}
       {comment.daftarBalasan && comment.daftarBalasan.length > 0 && (
         <div className="mt-3 ps-3 border-start border-2 space-y-2">
           {comment.daftarBalasan.map((reply) => {
             const replyAuthor = reply.penulis?.username || "Anonim";
+            const isReplyReported = reportedReplies[reply.id] || false;
+
             return (
-              <div key={reply.id} className="pt-2">
-                <div className="d-flex align-items-center gap-2 mb-1 text-muted" style={{ fontSize: "0.75rem" }}>
-                  <CornerDownRight size={12} />
-                  <span className="fw-bold text-dark">{replyAuthor}</span>
-                  <span>·</span>
-                  <span>{formatDate(reply.tanggalDibuat)}</span>
+              <div key={reply.id} className="pt-2 border-bottom border-light pb-2 last:border-0">
+                <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1 text-muted" style={{ fontSize: "0.75rem" }}>
+                  <div className="d-flex align-items-center gap-2">
+                    <CornerDownRight size={12} />
+                    <span className="fw-bold text-dark">{replyAuthor}</span>
+                    <span>·</span>
+                    <span>{formatDate(reply.tanggalDibuat)}</span>
+                  </div>
+
+                  {/* FIX 2: Tampilkan tombol Laporkan khusus baris balasan jika bukan guest */}
+                  {role !== "guest" && (
+                    <button
+                      onClick={() => setActiveReplyReport(reply)}
+                      className={`btn btn-sm p-0 border-0 shadow-none d-flex align-items-center gap-1 ${isReplyReported ? "text-danger fw-bold" : "text-muted"}`}
+                      style={{ fontSize: "0.7rem" }}
+                    >
+                      <Flag size={10} /> {isReplyReported ? "Dilaporkan" : "Laporkan"}
+                    </button>
+                  )}
                 </div>
                 <p className="mb-0 ps-4 text-secondary" style={{ fontSize: "0.875rem" }}>{reply.isi}</p>
               </div>
@@ -228,6 +236,7 @@ function CommentCard({
         </div>
       )}
 
+      {/* Modal Laporan Komentar Utama */}
       {showReportModal && (
         <ReportModal
           title={`komentar dari ${authorName}`}
@@ -235,6 +244,18 @@ function CommentCard({
           onSubmit={(reason) => {
             onReport(comment.id, reason);
             setReported(true);
+          }}
+        />
+      )}
+
+      {/* FIX 3: Modal Laporan khusus untuk komponen Balasan Komentar */}
+      {activeReplyReport && (
+        <ReportModal
+          title={`balasan dari ${activeReplyReport.penulis?.username || "Anonim"}`}
+          onClose={() => setActiveReplyReport(null)}
+          onSubmit={(reason) => {
+            onReportReply(activeReplyReport.id, reason);
+            setReportedReplies(prev => ({ ...prev, [activeReplyReport.id]: true }));
           }}
         />
       )}
@@ -267,12 +288,10 @@ export function ArticleDetail({ articleId, setView, role, currentUsername }: Art
       });
   }, [articleId]);
 
-// 1. Perbaikan Fungsi Like agar State Komentar Tetap Terjaga
   const handleLike = () => {
     if (!article) return;
     api.post(`/articles/${article.id}/like`)
       .then((res) => {
-        // Amankan data likes dan pertahankan data komentar lama agar tidak hilang di view
         setArticle(res.data);
       })
       .catch((err) => {
@@ -283,12 +302,10 @@ export function ArticleDetail({ articleId, setView, role, currentUsername }: Art
       });
   };
 
-  // 2. Perbaikan Fungsi Tambah Komentar dengan Proteksi Array Kosong
   const handleAddComment = () => {
     if (!newComment.trim() || !article) return;
     api.post(`/articles/${article.id}/komentar`, { isi: newComment })
       .then((res) => {
-        // FIX: Pastikan objek komentar baru memiliki array 'daftarBalasan' instan agar tidak memicu crash di CommentCard
         const komentarBaru = {
           ...res.data,
           daftarBalasan: res.data.daftarBalasan || []
@@ -303,9 +320,8 @@ export function ArticleDetail({ articleId, setView, role, currentUsername }: Art
     if (!article) return;
     api.post(`/articles/${article.id}/komentar/${commentId}/balas`, { isi: text })
       .then((res) => {
-        // Update data balasan di state lokal secara instan
         setComments(comments.map(c => 
-          c.id === commentId ? { ...c, daftarBalasan: [...c.daftarBalasan, res.data] } : c
+          c.id === commentId ? { ...c, daftarBalasan: [...(c.daftarBalasan || []), res.data] } : c
         ));
       });
   };
@@ -319,6 +335,13 @@ export function ArticleDetail({ articleId, setView, role, currentUsername }: Art
   const handleReportComment = (commentId: number, reason: string) => {
     if (!article) return;
     api.post(`/articles/${article.id}/komentar/${commentId}/report`, { alasan: reason });
+  };
+
+  // FIX 4: Tambahkan Handler untuk menembak endpoint report balasan komentar ke backend Java
+  const handleReportReply = (replyId: number, reason: string) => {
+    if (!article) return;
+    api.post(`/articles/${article.id}/balasan/${replyId}/report`, { alasan: reason })
+      .catch((err) => console.error("Gagal melaporkan balasan:", err));
   };
 
   if (loading) return <div className="container py-5 text-center"><div className="spinner-border text-primary"></div></div>;
@@ -372,8 +395,6 @@ export function ArticleDetail({ articleId, setView, role, currentUsername }: Art
       </header>
 
       <hr className="text-muted my-3" />
-
-      
 
       {/* Main Text Content */}
       <div className="mb-4 text-dark fs-6" style={{ lineHeight: "1.8", textAlign: "justify" }}>
@@ -444,6 +465,7 @@ export function ArticleDetail({ articleId, setView, role, currentUsername }: Art
               comment={comment}
               onReply={handleReply}
               onReport={handleReportComment}
+              onReportReply={handleReportReply} // 👈 FIX 5: Alirkan fungsi pelaporan balasan ke komponen anak
               role={role}
             />
           ))}

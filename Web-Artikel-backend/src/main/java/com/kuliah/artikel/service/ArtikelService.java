@@ -33,7 +33,6 @@ public class ArtikelService {
                 dataLama.setJudul(artikel.getJudul());
                 dataLama.setIsi(artikel.getIsi());
                 dataLama.setNamaPenulisKustom(artikel.getNamaPenulisKustom());
-                dataLama.setUrlGambar(artikel.getUrlGambar());
                 // Pertahankan penulis asli dan tanggal pembuatan aslinya agar tidak null
                 artikelRepository.save(dataLama);
                 return;

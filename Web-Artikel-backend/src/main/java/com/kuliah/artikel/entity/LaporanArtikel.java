@@ -22,8 +22,8 @@ public class LaporanArtikel {
     private Artikel artikel;
 
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "pengguna_id") // Pastikan nama kolom join eksplisit agar konsisten dengan DB
-    // Saring password dan peran pelapor demi keamanan data
+    // Paksa Hibernate mengisi kolom pelapor_id di MySQL, bukan pengguna_id
+    @JoinColumn(name = "pelapor_id", referencedColumnName = "id")
     @JsonIgnoreProperties({"password", "peran", "handler", "hibernateLazyInitializer"})
     private Pengguna pelapor;
 

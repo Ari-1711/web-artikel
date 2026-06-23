@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import api from "../services/api";
 import {
   ChevronLeft,
-  ImageIcon,
   PenSquare,
   Save,
   Eye,
@@ -18,7 +17,6 @@ interface AdminFormProps {
 export function AdminForm({ isEdit, articleId, setView }: AdminFormProps) {
   const [judul, setJudul] = useState("");
   const [namaPenulis, setNamaPenulis] = useState("");
-  const [urlGambar, setUrlGambar] = useState("");
   const [isi, setIsi] = useState("");
   const [preview, setPreview] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -32,7 +30,6 @@ export function AdminForm({ isEdit, articleId, setView }: AdminFormProps) {
         .then((res) => {
           setJudul(res.data.judul || "");
           setNamaPenulis(res.data.namaPenulisKustom || "");
-          setUrlGambar(res.data.urlGambar || "");
           setIsi(res.data.isi || "");
           setLoading(false);
         })
@@ -46,16 +43,15 @@ export function AdminForm({ isEdit, articleId, setView }: AdminFormProps) {
 
   const isValid = judul.trim() && namaPenulis.trim() && isi.trim();
 
-  // 2. Fungsi Kirim Data (Simpan / Perbarui) Konten ke Backend Java
+  // 2. Fungsi Kirim Data Konten ke Backend Java
   const handleSave = () => {
     if (!isValid) return;
 
     const payload = {
-      id: isEdit ? articleId : null, // Kirim ID jika edit untuk proses update dataLama
+      id: isEdit ? articleId : null,
       judul: judul,
       isi: isi,
       namaPenulisKustom: namaPenulis,
-      urlGambar: urlGambar,
     };
 
     api.post("/admin/artikel/simpan", payload)
@@ -155,34 +151,6 @@ export function AdminForm({ isEdit, articleId, setView }: AdminFormProps) {
             <div className="form-text text-muted" style={{ fontSize: "0.75rem" }}>Nama yang akan ditampilkan kepada pembaca</div>
           </div>
 
-          {/* Image URL */}
-          <div>
-            <label className="form-label small fw-semibold text-dark">URL Gambar Utama</label>
-            <div className="input-group">
-              <span className="input-group-text bg-light text-muted"><ImageIcon size={15} /></span>
-              <input
-                type="url"
-                value={urlGambar}
-                onChange={(e) => setUrlGambar(e.target.value)}
-                placeholder="https://images.unsplash.com/..."
-                className="form-control shadow-none py-2"
-                style={{ fontSize: "0.875rem" }}
-              />
-            </div>
-
-            {/* Image Preview */}
-            {urlGambar && (
-              <div className="mt-3 rounded border overflow-hidden bg-light" style={{ aspectRatio: "16/7" }}>
-                <img
-                  src={urlGambar}
-                  alt="Preview gambar"
-                  className="w-100 h-100 object-cover"
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                />
-              </div>
-            )}
-          </div>
-
           {/* Content Area */}
           <div>
             <div className="d-flex align-items-center justify-content-between mb-1">
@@ -271,7 +239,6 @@ export function AdminForm({ isEdit, articleId, setView }: AdminFormProps) {
               <li>Gunakan judul yang spesifik dan mengandung kata kunci utama.</li>
               <li>Awali dengan kalimat pembuka yang menarik perhatian.</li>
               <li>Gunakan paragraf pendek (3–5 kalimat) untuk keterbacaan.</li>
-              <li>Sertakan gambar yang relevan dengan resolusi tinggi.</li>
               <li>Periksa fakta sebelum menerbitkan artikel.</li>
             </ol>
           </div>

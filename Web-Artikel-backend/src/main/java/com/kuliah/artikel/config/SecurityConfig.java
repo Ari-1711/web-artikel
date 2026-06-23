@@ -3,6 +3,7 @@ package com.kuliah.artikel.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -14,7 +15,6 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.Arrays;
 import java.util.List;
 
 @Configuration
@@ -29,43 +29,37 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            // 1. AKTIFKAN CORS & MATIKAN CSRF (Sangat penting untuk komunikasi dengan React)
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
             
-            // 2. Atur hak akses endpoint API
             .authorizeHttpRequests(auth -> auth
-                // Izinkan akses publik untuk auth dan membaca artikel
-                // Catatan: Pastikan di controller kamu mapping-nya "/api/articles" atau "/api/artikel"
                 .requestMatchers("/api/auth/**", "/api/articles/**", "/api/artikel/**").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
             
-            // 3. Ubah Form Login agar mengembalikan status JSON
+            // Refaktor Malas: Memanfaatkan format penulisan sebaris yang padat
             .formLogin(form -> form
                 .loginProcessingUrl("/api/auth/masuk")
-                .successHandler((request, response, authentication) -> {
-                    response.setStatus(HttpStatus.OK.value());
-                    response.setContentType("application/json");
-                    response.getWriter().write("{\"message\": \"Login berhasil\"}");
+                .successHandler((req, res, auth) -> {
+                    res.setStatus(HttpStatus.OK.value());
+                    res.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                    res.getWriter().write("{\"message\": \"Login berhasil\"}");
                 })
-                .failureHandler((request, response, exception) -> {
-                    response.setStatus(HttpStatus.UNAUTHORIZED.value());
-                    response.setContentType("application/json");
-                    response.getWriter().write("{\"error\": \"Username atau password salah\"}");
+                .failureHandler((req, res, exp) -> {
+                    res.setStatus(HttpStatus.UNAUTHORIZED.value());
+                    res.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                    res.getWriter().write("{\"error\": \"Username atau password salah\"}");
                 })
                 .permitAll()
             )
             
-            // 4. Ubah Logout agar mengembalikan status JSON
             .logout(logout -> logout
                 .logoutUrl("/api/auth/keluar")
                 .logoutSuccessHandler(new HttpStatusReturningLogoutSuccessHandler(HttpStatus.OK))
                 .permitAll()
             )
             
-            // 5. Tangani Error Autentikasi (Kembalikan 401 Unauthorized)
             .exceptionHandling(exception -> exception
                 .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
             );
@@ -73,17 +67,16 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // KONFIGURASI CORS: Mengizinkan browser menerima data dari port React kamu
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:5173")); // Port React Vite
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With"));
-        configuration.setAllowCredentials(true); // Izinkan session cookie/auth header tembus
+        configuration.setAllowedOrigins(List.of("http://localhost:5173")); 
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS")); // Ganti Arrays.asList dengan List.of yang lebih modern
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With"));
+        configuration.setAllowCredentials(true); 
         
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration); // Terapkan ke semua endpoint
+        source.registerCorsConfiguration("/**", configuration); 
         return source;
     }
 }

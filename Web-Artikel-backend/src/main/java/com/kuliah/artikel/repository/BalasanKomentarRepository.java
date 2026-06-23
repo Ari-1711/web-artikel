@@ -2,8 +2,8 @@ package com.kuliah.artikel.repository;
 
 import com.kuliah.artikel.entity.BalasanKomentar;
 import org.springframework.data.jpa.repository.JpaRepository;
-import java.util.List;
+import org.springframework.stereotype.Repository;
 
+@Repository // 👈 PASTIKAN ANOTASI INI ADA
 public interface BalasanKomentarRepository extends JpaRepository<BalasanKomentar, Long> {
-    List<BalasanKomentar> findByKomentarIndukIdOrderByTanggalDibuatAsc(Long komentarId);
 }

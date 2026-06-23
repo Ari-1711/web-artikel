@@ -9,9 +9,11 @@ import java.util.List;
 
 public interface LaporanArtikelRepository extends JpaRepository<LaporanArtikel, Long> {
     
-    // Perbaikan: mengubah ':waktu Mulai' menjadi ':waktuMulai' tanpa spasi
-    @Query("SELECT l.artikel.id, l.artikel.judul, COUNT(l.id) as total_report, MAX(l.tanggalDilaporkan) " +
-           "FROM LaporanArtikel l WHERE l.tanggalDilaporkan >= :waktuMulai " +
-           "GROUP BY l.artikel.id, l.artikel.judul ORDER BY total_report DESC")
-    List<Object[]> ambilLaporanArtikelTerbanyak(@Param("waktuMulai") LocalDateTime waktuMulai);
+    // Taktik Malas & Ampuh: Ambil entitas utuh, urutkan langsung dari database
+    @Query("SELECT l FROM LaporanArtikel l " +
+           "JOIN FETCH l.artikel a " +
+           "LEFT JOIN FETCH l.pelapor p " +
+           "WHERE l.tanggalDilaporkan >= :waktuMulai " +
+           "ORDER BY l.tanggalDilaporkan DESC")
+    List<LaporanArtikel> ambilLaporanArtikelTerbanyak(@Param("waktuMulai") LocalDateTime waktuMulai);
 }

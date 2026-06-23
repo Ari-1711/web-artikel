@@ -14,15 +14,20 @@ public class LaporanKomentar {
     private String alasan;
     private LocalDateTime tanggalDilaporkan = LocalDateTime.now();
 
+    // Diubah menjadi nullable = true karena konten bisa berupa komentar utama atau balasan
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "komentar_id")
-    // Potong data nested dari Komentar agar JSON dashboard admin tetap ringan
+    @JoinColumn(name = "komentar_id", nullable = true)
     @JsonIgnoreProperties({"artikel", "daftarBalasan", "penulis"})
     private Komentar komentar;
 
+    // Tambahkan relasi ke BalasanKomentar (Pastikan nama entitas Anda tepat BalasanKomentar)
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "pengguna_id")
-    // Saring data kredensial pelapor demi keamanan
+    @JoinColumn(name = "balasan_id", nullable = true)
+    @JsonIgnoreProperties({"komentarUtama", "penulis", "artikel"}) // Sesuaikan ignore agar JSON tidak looping
+    private BalasanKomentar balasanKomentar;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "pelapor_id", referencedColumnName = "id")
     @JsonIgnoreProperties({"password", "peran", "handler", "hibernateLazyInitializer"})
     private Pengguna pelapor;
 
@@ -35,6 +40,11 @@ public class LaporanKomentar {
     public void setTanggalDilaporkan(LocalDateTime tanggalDilaporkan) { this.tanggalDilaporkan = tanggalDilaporkan; }
     public Komentar getKomentar() { return komentar; }
     public void setKomentar(Komentar komentar) { this.komentar = komentar; }
+    
+    // Getter & Setter Baru untuk Balasan Komentar
+    public BalasanKomentar getBalasanKomentar() { return balasanKomentar; }
+    public void setBalasanKomentar(BalasanKomentar balasanKomentar) { this.balasanKomentar = balasanKomentar; }
+    
     public Pengguna getPelapor() { return pelapor; }
     public void setPelapor(Pengguna pelapor) { this.pelapor = pelapor; }
 }

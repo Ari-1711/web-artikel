@@ -1,8 +1,12 @@
 package com.kuliah.artikel.controller;
 
 import com.kuliah.artikel.entity.Artikel;
+import com.kuliah.artikel.entity.BalasanKomentar;
+import com.kuliah.artikel.entity.LaporanKomentar;
+import com.kuliah.artikel.entity.Pengguna;
 import com.kuliah.artikel.repository.ArtikelRepository;
 import com.kuliah.artikel.repository.KomentarRepository;
+import com.kuliah.artikel.repository.BalasanKomentarRepository; // 👈 Tambah import ini
 import com.kuliah.artikel.repository.PenggunaRepository;
 import com.kuliah.artikel.repository.LaporanArtikelRepository;
 import com.kuliah.artikel.repository.LaporanKomentarRepository;
@@ -16,7 +20,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/admin")
-@CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true") // FIX: Port Vite & Izinkan Cookie Auth
+@CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true")
 public class AdminController {
 
     private final ArtikelRepository artikelRepository;
@@ -24,15 +28,17 @@ public class AdminController {
     private final LaporanArtikelRepository laporanArtikelRepository;
     private final LaporanKomentarRepository laporanKomentarRepository;
     private final KomentarRepository komentarRepository;
+    private final BalasanKomentarRepository balasanKomentarRepository; // 👈 Tambah field ini
 
     public AdminController(ArtikelRepository artikelRepository, PenggunaRepository penggunaRepository,
                            LaporanArtikelRepository laporanArtikelRepository, LaporanKomentarRepository laporanKomentarRepository,
-                           KomentarRepository komentarRepository) {
+                           KomentarRepository komentarRepository, BalasanKomentarRepository balasanKomentarRepository) { // 👈 Tambah di parameter
         this.artikelRepository = artikelRepository;
         this.penggunaRepository = penggunaRepository;
         this.laporanArtikelRepository = laporanArtikelRepository;
         this.laporanKomentarRepository = laporanKomentarRepository;
-        this.komentarRepository = komentarRepository; // Set nilai variabelnya di sini
+        this.komentarRepository = komentarRepository;
+        this.balasanKomentarRepository = balasanKomentarRepository; // 👈 Assign ke field
     }
 
     @GetMapping("/dashboard")
@@ -66,7 +72,7 @@ public class AdminController {
     public ResponseEntity<Map<String, String>> simpanArtikel(@RequestBody Artikel artikel, Principal principal) {
         Map<String, String> response = new HashMap<>();
         
-        // 1. Fitur EDIT ARTIKEL (ID sudah ada)
+        // 1. Fitur EDIT ARTIKEL
         if (artikel.getId() != null) {
             Artikel dataLama = artikelRepository.findById(artikel.getId()).orElse(null);
             if (dataLama == null) {
@@ -76,14 +82,12 @@ public class AdminController {
             dataLama.setJudul(artikel.getJudul());
             dataLama.setIsi(artikel.getIsi());
             dataLama.setNamaPenulisKustom(artikel.getNamaPenulisKustom());
-            dataLama.setUrlGambar(artikel.getUrlGambar());
             artikelRepository.save(dataLama);
             response.put("message", "Artikel berhasil diperbarui");
             return ResponseEntity.ok(response);
         } 
         
-        // 2. Fitur TAMBAH ARTIKEL BARU (ID null)
-        // FIX: Proteksi berlapis jika session admin belum terdeteksi oleh Spring Security
+        // 2. Fitur TAMBAH ARTIKEL BARU
         if (principal == null) {
             response.put("error", "Akses ditolak. Anda harus login sebagai admin.");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
@@ -115,11 +119,20 @@ public class AdminController {
 
     @DeleteMapping("/komentar/hapus/{id}")
     public ResponseEntity<Map<String, String>> hapusKomentarDariAdmin(@PathVariable Long id) {
-        // Panggil variabel instance dengan huruf kecil di depan
         komentarRepository.deleteById(id); 
-        
         Map<String, String> response = new HashMap<>();
         response.put("message", "Komentar buruk berhasil dihapus oleh admin");
         return ResponseEntity.ok(response);
     }
+
+    // 👈 TAMBAHKAN ENDPOINT INI: Untuk menghapus balasan komentar dari panel admin
+    @DeleteMapping("/balasan/hapus/{id}")
+    public ResponseEntity<Map<String, String>> hapusBalasanDariAdmin(@PathVariable Long id) {
+        balasanKomentarRepository.deleteById(id);
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Balasan komentar buruk berhasil dihapus oleh admin");
+        return ResponseEntity.ok(response);
+    }
+
+    
 }
